@@ -1,8 +1,6 @@
 import cv2
 import mediapipe as mp
 import math
-import pickle
-import numpy as np
 
 # Khởi tạo đối tượng Mediapipe Pose
 mp_pose = mp.solutions.pose
@@ -11,73 +9,59 @@ pose = mp_pose.Pose(min_detection_confidence=0.3, min_tracking_confidence=0.3)
 # Khởi tạo đối tượng Mediapipe Drawing
 mp_drawing = mp.solutions.drawing_utils
 
-# Danh sách để lưu dữ liệu
-data = []
+# Đường dẫn đến ảnh chụp
+image_path = 'E:\\DHMT\\New folder\\PD_camera\\data\\files\\0\\front_img.jpg'
 
+# Đọc ảnh
+image = cv2.imread(image_path)
+
+# Chiều cao của người (tự nhập)
 height = float(input("Nhập chiều cao của người (cm): "))
 
-# Bắt đầu quá trình huấn luyện
-while True:
-    # Khởi tạo camera
-    cap = cv2.VideoCapture(0)
+# Chuyển đổi ảnh thành ảnh màu RGB
+image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-    # Chờ vài giây để camera khởi động
-    cv2.waitKey(2000)
+# Nhận dạng các điểm mốc trên cơ thể
+results = pose.process(image_rgb)
 
-    # Đọc khung hình từ camera
-    ret, image = cap.read()
+if results.pose_landmarks:
+    landmarks = results.pose_landmarks.landmark
 
-    # Chuyển đổi ảnh thành ảnh màu RGB
-    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    # Tính toán tỷ lệ giữa chiều cao thực tế và chiều cao pixels để áp dụng vào đo đạc
+    height_pixels = math.sqrt((landmarks[mp_pose.PoseLandmark.RIGHT_HIP].x * image.shape[1] - landmarks[mp_pose.PoseLandmark.LEFT_HIP].x * image.shape[1]) ** 2 +
+                             (landmarks[mp_pose.PoseLandmark.RIGHT_HIP].y * image.shape[0] - landmarks[mp_pose.PoseLandmark.LEFT_HIP].y * image.shape[0]) ** 2)
+    height_ratio = height / height_pixels
 
-    # Nhận dạng các điểm mốc trên cơ thể
-    results = pose.process(image_rgb)
+    # Tính toán chiều rộng của vai và chiều dài của cánh tay dựa trên chiều cao tỷ lệ
+    shoulder_width = height_ratio * abs(landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER].x * image.shape[1] - landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER].x * image.shape[1])
+    arm_length = height_ratio * abs(landmarks[mp_pose.PoseLandmark.LEFT_WRIST].y * image.shape[0] - landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER].y * image.shape[0])
 
-    if results.pose_landmarks:
-        landmarks = results.pose_landmarks.landmark
+    # Tính toán chiều rộng của ngực
+    chest_width = height_ratio * abs(landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER].x * image.shape[1] - landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER].x * image.shape[1])
 
-        # Lấy các điểm mốc cần thiết
-        shoulder = landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER]
-        hip = landmarks[mp_pose.PoseLandmark.LEFT_HIP]
-        wrist = landmarks[mp_pose.PoseLandmark.LEFT_WRIST]
+    # Tính toán chiều dài chân
+    leg_length = height_ratio * abs(landmarks[mp_pose.PoseLandmark.LEFT_HEEL].y * image.shape[0] - landmarks[mp_pose.PoseLandmark.LEFT_HIP].y * image.shape[0])
 
-        # Tính toán chiều cao pixels
-        shoulder_x, shoulder_y = int(shoulder.x * image.shape[1]), int(shoulder.y * image.shape[0])
-        hip_x, hip_y = int(hip.x * image.shape[1]), int(hip.y * image.shape[0])
-        height_pixels = max(math.sqrt((hip_x - shoulder_x) ** 2 + (hip_y - shoulder_y) ** 2), 1)
-
-        # Tính toán tỷ lệ giữa chiều cao thực tế và chiều cao pixels để áp dụng vào đo đạc
-        height_ratio = height / height_pixels
-
-        # Tính toán các số đo cơ thể và lưu vào danh sách
-        shoulder_width = height_ratio * abs(shoulder.x * image.shape[1] - hip.x * image.shape[1])
-        arm_length = height_ratio * abs(wrist.x * image.shape[1] - shoulder.x * image.shape[1])
-
-        data_point = [shoulder_width, arm_length]  # Thêm các số đo khác vào danh sách ở đây
-
-        data.append(data_point)
-
-        # Hiển thị các chỉ số cơ thể
-        cv2.putText(image, f"Shoulder Width: {shoulder_width:.2f} cm", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-        cv2.putText(image, f"Arm Length: {arm_length:.2f} cm", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+    # Hiển thị các chỉ số cơ thể
+    cv2.putText(image, f"Shoulder Width: {shoulder_width:.2f} cm", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+    cv2.putText(image, f"Arm Length: {arm_length:.2f} cm", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+    cv2.putText(image, f"Chest Width: {chest_width:.2f} cm", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+    cv2.putText(image, f"Leg Length: {leg_length:.2f} cm", (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
     # Vẽ các điểm mốc trên cơ thể
     mp_drawing.draw_landmarks(image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
 
     # Hiển thị ảnh với các chỉ số cơ thể
     cv2.imshow('Body Measurements', image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
-    # Nhấn 'q' để kết thúc việc ghi dữ liệu
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-# Đóng camera
-cap.release()
-cv2.destroyAllWindows()
-
-# Chuyển danh sách thành mảng NumPy
-data = np.array(data)
-
-# Lưu dữ liệu đã thu thập vào một tệp pickle
-with open('trained_data.pkl', 'wb') as file:
-    pickle.dump(data, file)
+    # Lưu các chỉ số cơ thể và chiều cao vào một tệp JSON hoặc dạng dữ liệu khác nếu cần
+    body_measurements = {
+        "shoulder_width_cm": shoulder_width,
+        "arm_length_cm": arm_length,
+        "chest_width_cm": chest_width,
+        "leg_length_cm": leg_length,
+        "height_cm": height
+    }
+    print(body_measurements)

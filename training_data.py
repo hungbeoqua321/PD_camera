@@ -16,5 +16,18 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 model = LinearRegression()
 model.fit(X_train, y_train)
 
-# Dự đoán số đo còn lại dựa vào chiều cao
-joblib.dump(model, 'trained_data.pkl')
+# Lấy mô hình đã huấn luyện từ trained_data.pkl nếu nó đã tồn tại
+try:
+    trained_model = joblib.load('trained_data.pkl')
+    # Gộp dữ liệu cũ và dữ liệu mới
+    X_train = pd.concat([X_train, X_train])
+    y_train = pd.concat([y_train, y_train])
+    
+    # Huấn luyện lại mô hình từ đầu
+    trained_model.fit(X_train, y_train)
+except FileNotFoundError:
+    # Nếu trained_data.pkl chưa tồn tại, sử dụng mô hình mới
+    trained_model = model
+
+# Ghi mô hình đã huấn luyện vào trained_data.pkl
+joblib.dump(trained_model, 'trained_data.pkl')
