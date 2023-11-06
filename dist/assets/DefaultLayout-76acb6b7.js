@@ -1,0 +1,1 @@
+import{_ as o}from"./_plugin-vue_export-helper-c27b6911.js";import{o as r,c as t,r as s}from"./index-0ce9cf90.js";const c={},n={class:"background min-h-screen"};function a(e,_){return r(),t("div",n,[s(e.$slots,"default")])}const d=o(c,[["render",a]]);export{d as default};

@@ -1,0 +1,1 @@
+import{_ as t}from"./_plugin-vue_export-helper-c27b6911.js";import{o,c as s,r,a as c}from"./index-0ce9cf90.js";const n={},a={class:"background min-h-screen flex justify-center items-center"},_=c("div",null,"Auth Layout",-1);function d(e,i){return o(),s("div",a,[_,r(e.$slots,"default")])}const f=t(n,[["render",d]]);export{f as default};
